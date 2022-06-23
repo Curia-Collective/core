@@ -1,0 +1,301 @@
+{
+  "_format": "ethers-rs-sol-cache-2",
+  "files": {
+    "C:\\Users\\rossc\\curiad\\lib\\forge-std\\lib\\ds-test\\src/test.sol": {
+      "lastModificationDate": 1655991928724,
+      "contentHash": "2c9806925f5d78ba4f4fb0570611cca3",
+      "sourceName": "lib\\forge-std\\lib\\ds-test\\src/test.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1000
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ]
+            }
+          },
+          "evmVersion": "london"
+        }
+      },
+      "imports": [],
+      "versionRequirement": ">=0.5.0",
+      "artifacts": {}
+    },
+    "C:\\Users\\rossc\\curiad\\lib/forge-std/src/Test.sol": {
+      "lastModificationDate": 1655991924768,
+      "contentHash": "1d8be3aaccef7f35b28e66e12c57c426",
+      "sourceName": "lib/forge-std/src/Test.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1000
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ]
+            }
+          },
+          "evmVersion": "london"
+        }
+      },
+      "imports": [
+        "lib\\forge-std\\lib\\ds-test\\src/test.sol",
+        "lib\\forge-std\\src\\Vm.sol",
+        "lib\\forge-std\\src\\console.sol"
+      ],
+      "versionRequirement": ">=0.6.0, <0.9.0",
+      "artifacts": {}
+    },
+    "C:\\Users\\rossc\\curiad\\lib\\forge-std\\src\\Vm.sol": {
+      "lastModificationDate": 1655991924769,
+      "contentHash": "008fd42f1f4786e8bc687e488cffe92f",
+      "sourceName": "lib\\forge-std\\src\\Vm.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1000
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ]
+            }
+          },
+          "evmVersion": "london"
+        }
+      },
+      "imports": [],
+      "versionRequirement": ">=0.6.0",
+      "artifacts": {}
+    },
+    "C:\\Users\\rossc\\curiad\\lib\\forge-std\\src\\console.sol": {
+      "lastModificationDate": 1655991924772,
+      "contentHash": "c8cf989d04bc2e3069e3d91facf3b69c",
+      "sourceName": "lib\\forge-std\\src\\console.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1000
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ]
+            }
+          },
+          "evmVersion": "london"
+        }
+      },
+      "imports": [],
+      "versionRequirement": ">=0.4.22, <0.9.0",
+      "artifacts": {}
+    },
+    "C:\\Users\\rossc\\curiad\\lib/solmate/src/test/utils/mocks/MockERC20.sol": {
+      "lastModificationDate": 1655991930703,
+      "contentHash": "a43ff973f6fc1afad3fb92e761b233fc",
+      "sourceName": "lib/solmate/src/test/utils/mocks/MockERC20.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1000
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ]
+            }
+          },
+          "evmVersion": "london"
+        }
+      },
+      "imports": [
+        "lib\\solmate\\src\\tokens\\ERC20.sol"
+      ],
+      "versionRequirement": ">=0.8.0",
+      "artifacts": {}
+    },
+    "C:\\Users\\rossc\\curiad\\lib\\solmate\\src\\tokens\\ERC20.sol": {
+      "lastModificationDate": 1655991930715,
+      "contentHash": "6e14547223562f17c62bfbc0c23f3751",
+      "sourceName": "lib\\solmate\\src\\tokens\\ERC20.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1000
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ]
+            }
+          },
+          "evmVersion": "london"
+        }
+      },
+      "imports": [],
+      "versionRequirement": ">=0.8.0",
+      "artifacts": {}
+    },
+    "C:\\Users\\rossc\\curiad\\src\\LexLocker.sol": {
+      "lastModificationDate": 1656014761933,
+      "contentHash": "ea989b8d1f0b7d154ada027c87d2e7bf",
+      "sourceName": "src\\LexLocker.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1000
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ]
+            }
+          },
+          "evmVersion": "london"
+        }
+      },
+      "imports": [],
+      "versionRequirement": "=0.8.15",
+      "artifacts": {
+        "IBentoBoxMinimal": {
+          "0.8.15+commit.e14f2714.Windows.msvc": "LexLocker.sol\\IBentoBoxMinimal.json"
+        },
+        "LexLocker": {
+          "0.8.15+commit.e14f2714.Windows.msvc": "LexLocker.sol\\LexLocker.json"
+        }
+      }
+    },
+    "C:\\Users\\rossc\\curiad\\src\\test\\LexLocker.t.sol": {
+      "lastModificationDate": 1656015429990,
+      "contentHash": "0ef1acca2f402facd8305b837515df81",
+      "sourceName": "src\\test\\LexLocker.t.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1000
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ]
+            }
+          },
+          "evmVersion": "london"
+        }
+      },
+      "imports": [
+        "lib\\forge-std\\lib\\ds-test\\src/test.sol",
+        "lib/forge-std/src/Test.sol",
+        "lib\\forge-std\\src\\Vm.sol",
+        "lib\\forge-std\\src\\console.sol",
+        "lib/solmate/src/test/utils/mocks/MockERC20.sol",
+        "lib\\solmate\\src\\tokens\\ERC20.sol",
+        "src\\LexLocker.sol",
+        "src\\test\\mocks\\MockBento.sol"
+      ],
+      "versionRequirement": "=0.8.15",
+      "artifacts": {
+        "LexLockerTest": {
+          "0.8.15+commit.e14f2714.Windows.msvc": "LexLocker.t.sol\\LexLockerTest.json"
+        }
+      }
+    },
+    "C:\\Users\\rossc\\curiad\\src\\test\\mocks\\MockBento.sol": {
+      "lastModificationDate": 1656013282021,
+      "contentHash": "12a03c21b100d19f39c273f47eeff776",
+      "sourceName": "src\\test\\mocks\\MockBento.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 1000
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers"
+              ]
+            }
+          },
+          "evmVersion": "london"
+        }
+      },
+      "imports": [],
+      "versionRequirement": "=0.8.15",
+      "artifacts": {}
+    }
+  }
+}

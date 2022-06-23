@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.15;
 
-import {LexLocker} from "../LexLocker.sol";
+import {IBentoBoxMinimal, LexLocker} from "../LexLocker.sol";
+
+import {MockBento} from "./mocks/MockBento.sol";
 
 import {MockERC20} from "@solmate/test/utils/mocks/MockERC20.sol";
 
@@ -11,6 +13,10 @@ contract LexLockerTest is Test {
     using stdStorage for StdStorage;
 
     LexLocker locker;
+    IBentoBoxMinimal bento;
+    MockERC20 mockDai;
+
+    uint256 bag = 1 ether;
     
     /// @dev Users
 
@@ -33,25 +39,30 @@ contract LexLockerTest is Test {
 
     function setUp() public {
         console.log(unicode"🧪 Testing LexLocker...");
-        locker = new LexLocker("gm");
+        locker = new LexLocker(bento, alice, bob);
         mockDai = new MockERC20("Dai", "DAI", 18);
         // 1B mockDai!
         mockDai.mint(address(this), 1000000000 * 1e18);
         mockDai.approve(address(locker), type(uint256).max);
-        startHoax(alice, alice, type(uint256).max);
-        registerResolver(true, 20);
+        
+        startHoax(charlie, charlie, type(uint256).max);
+        locker.registerResolver(true, 20);
         vm.stopPrank();
     }
-
+    /*
     function testDepositETH() public {
+        // Create value[]
+        uint256[] memory value = new uint256[](1);
+        value[0] = bag;
+
         locker.deposit{value: 1 ether}(
             bob,
             charlie,
             address(0),
-            [1 ether],
+            value,
             0,
             false,
             "DEAL"
         );
-    }
+    }*/
 }

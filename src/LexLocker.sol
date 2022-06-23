@@ -46,15 +46,16 @@ interface IBentoBoxMinimal {
     ) external;
 }
 
-/// @notice Bilateral escrow for ETH and ERC-20/721 tokens with BentoBox integration.
-/// @author LexDAO LLC.
+/// @title LexLocker
+/// @author LexDAO LLC
+/// @notice Resolveable, yield-bearing deal escrow for ETH and ERC-20/721 tokens.
 contract LexLocker {
     /// @dev BentoBox vault contract.
-    IBentoBoxMinimal immutable bento;
+    IBentoBoxMinimal private immutable bento;
     /// @dev Legal engineering guild.
     address public lexDAO;
     /// @dev Wrapped ether (or native asset) supported on BentoBox.
-    address immutable wETH;
+    address private immutable wETH;
     /// @dev Registered locker counter.
     uint256 public lockerCount;
     /// @dev Chain Id at this contract's deployment.
@@ -63,9 +64,10 @@ contract LexLocker {
     bytes32 private immutable INITIAL_DOMAIN_SEPARATOR;
     /// @dev EIP-712 typehash for invoicing deposits.
     bytes32 private constant INVOICE_HASH = keccak256("DepositInvoiceSig(address depositor,address receiver,address resolver,string details)");
-    /// @dev Convenience for contract location.
+    /// @dev Convenience marker for contract location.
     string public constant name = "LexLocker";
 
+    /// @dev Stored mappings for users.
     mapping(uint256 => string) public agreements;
     mapping(uint256 => Locker) public lockers;
     mapping(address => Resolver) public resolvers;
@@ -79,7 +81,7 @@ contract LexLocker {
         IBentoBoxMinimal bento_, 
         address lexDAO_, 
         address wETH_
-    ) {
+    ) payable {
         bento_.registerProtocol();
         bento = bento_;
         lexDAO = lexDAO_;
@@ -101,7 +103,6 @@ contract LexLocker {
         uint256 termination,
         uint256 registration,
         string details);
-    event DepositInvoiceSig(address indexed depositor, address indexed receiver);
     event Release(uint256 registration);
     event Withdraw(uint256 registration);
     event Lock(uint256 registration, string details);
@@ -148,6 +149,12 @@ contract LexLocker {
         _;
         locked = 1;
     }
+
+    /// @dev LexDAO guard.
+    modifier onlyLexDAO() {
+        require(msg.sender == lexDAO, "NOT_LEXDAO");
+        _;
+    }
     
     /// @notice EIP-712 typehash for this contract's domain.
     function DOMAIN_SEPARATOR() public view returns (bytes32) {
@@ -176,11 +183,11 @@ contract LexLocker {
         milestones = lockers[registration].value;
     }
     
-    /// @notice Deposits tokens (ERC-20/721) into escrow 
-    /// - locked funds can be released by `msg.sender` `depositor` 
+    /// @notice Deposits ETH or tokens (ERC-20/721) into locker 
+    /// - escrowed funds can be released by `msg.sender` `depositor` 
     /// - both parties can {lock} for `resolver`. 
     /// @param receiver The account that receives funds.
-    /// @param resolver The account that unlock funds.
+    /// @param resolver The account that unlocks funds.
     /// @param token The asset used for funds.
     /// @param value The amount of funds in milestones - if `nft`, the 'tokenId' in first value is used.
     /// @param termination Unix time upon which `depositor` can claim back funds.
@@ -200,9 +207,10 @@ contract LexLocker {
         
         // Tally up `sum` from `value` milestones.
         uint256 sum;
-        unchecked {
-            for (uint256 i; i < value.length; ++i) {
-                sum += value[i];
+        for (uint256 i; i < value.length; ) {
+            sum += value[i];
+            unchecked {
+                ++i;
             }
         }
         
@@ -228,8 +236,8 @@ contract LexLocker {
         emit Deposit(false, nft, msg.sender, receiver, resolver, token, sum, termination, registration, details);
     }
     
-    /// @notice Deposits tokens (ERC-20/721) into BentoBox escrow 
-    /// - locked funds can be released by `msg.sender` `depositor` 
+    /// @notice Deposits ETH or tokens (ERC-20) into BentoBox vault 
+    /// - escrowed funds can be released by `msg.sender` `depositor` 
     /// - both parties can {lock} for `resolver`. 
     /// @param receiver The account that receives funds.
     /// @param resolver The account that unlock funds.
@@ -252,9 +260,10 @@ contract LexLocker {
         
         // Tally up `sum` from `value` milestones.
         uint256 sum;
-        unchecked {
-            for (uint256 i; i < value.length; ++i) {
-                sum += value[i];
+        for (uint256 i; i < value.length; ) {
+            sum += value[i];
+            unchecked {
+                ++i;
             }
         }
         
@@ -280,7 +289,7 @@ contract LexLocker {
                 true, false, false, msg.sender, receiver, resolver, token, 0, uint32(termination), 0, uint96(sum), value
             );
   
-        emit Deposit(false, false, msg.sender, receiver, resolver, token, sum, termination, registration, details);
+        emit Deposit(true, false, msg.sender, receiver, resolver, token, sum, termination, registration, details);
     }
     
     /// @notice Validates deposit request 'invoice' for locker escrow.
@@ -318,7 +327,9 @@ contract LexLocker {
                     DOMAIN_SEPARATOR(),
                     keccak256(
                         abi.encode(
-                            INVOICE_HASH,
+                            keccak256(
+                                "DepositInvoiceSig(address depositor,address receiver,address resolver,string details)"
+                            ),
                             msg.sender,
                             receiver,
                             resolver,
@@ -336,8 +347,6 @@ contract LexLocker {
         } else {
             depositBento(receiver, resolver, token, value, termination, wrapBento, details);
         }
-        
-        emit DepositInvoiceSig(msg.sender, receiver);
     }
     
     /// @notice Releases escrowed assets to designated `receiver` 
@@ -345,29 +354,31 @@ contract LexLocker {
     /// - can be called after `termination` as optional extension
     /// - escrowed sum is released in order of `value` milestones array.
     /// @param registration The index of escrow deposit.
-    function release(uint256 registration) external nonReentrant {
+    function release(uint256 registration) external payable nonReentrant {
         Locker storage locker = lockers[registration]; 
         
         require(!locker.locked, "LOCKED");
         require(msg.sender == locker.depositor, "NOT_DEPOSITOR");
         
+        uint256 milestone = locker.value[locker.currentMilestone];
+
         unchecked {
             // Handle asset transfer.
             if (locker.token == address(0)) { // Release ETH.
-                safeTransferETH(locker.receiver, locker.value[locker.currentMilestone]);
-                locker.paid += uint96(locker.value[locker.currentMilestone]);
+                safeTransferETH(locker.receiver, milestone);
+                locker.paid += uint96(milestone);
                 ++locker.currentMilestone;
             } else if (locker.bento) { // Release BentoBox shares.
-                bento.transfer(locker.token, address(this), locker.receiver, locker.value[locker.currentMilestone]);
-                locker.paid += uint96(locker.value[locker.currentMilestone]);
+                bento.transfer(locker.token, address(this), locker.receiver, milestone);
+                locker.paid += uint96(milestone);
                 ++locker.currentMilestone;
             } else if (!locker.nft) { // ERC-20.
-                safeTransfer(locker.token, locker.receiver, locker.value[locker.currentMilestone]);
-                locker.paid += uint96(locker.value[locker.currentMilestone]);
+                safeTransfer(locker.token, locker.receiver, milestone);
+                locker.paid += uint96(milestone);
                 ++locker.currentMilestone;
             } else { // Release NFT (note: set to single milestone).
-                safeTransferFrom(locker.token, address(this), locker.receiver, locker.value[0]);
-                locker.paid += uint96(locker.value[0]);
+                safeTransferFrom(locker.token, address(this), locker.receiver, milestone);
+                locker.paid += uint96(milestone);
             }
         }
         
@@ -382,7 +393,7 @@ contract LexLocker {
     /// @notice Releases escrowed assets back to designated `depositor` 
     /// - can only be called by `depositor` if `termination` reached.
     /// @param registration The index of escrow deposit.
-    function withdraw(uint256 registration) external nonReentrant {
+    function withdraw(uint256 registration) external payable nonReentrant {
         Locker storage locker = lockers[registration];
         
         require(msg.sender == locker.depositor, "NOT_DEPOSITOR");
@@ -413,13 +424,10 @@ contract LexLocker {
     /// @notice Locks escrowed assets for resolution - can only be called by locker parties.
     /// @param registration The index of escrow deposit.
     /// @param details Description of lock action (note: can link to secure dispute details, etc.).
-    function lock(uint256 registration, string calldata details) external nonReentrant {
+    function lock(uint256 registration, string calldata details) external payable {
         Locker storage locker = lockers[registration];
-        
         require(msg.sender == locker.depositor || msg.sender == locker.receiver, "NOT_PARTY");
-        
         locker.locked = true;
-        
         emit Lock(registration, details);
     }
     
@@ -429,20 +437,31 @@ contract LexLocker {
     /// @param depositorAward The sum given to `depositor`.
     /// @param receiverAward The sum given to `receiver`.
     /// @param details Description of resolution (note: can link to secure judgment details, etc.).
-    function resolve(uint256 registration, uint256 depositorAward, uint256 receiverAward, string calldata details) external nonReentrant {
+    function resolve(
+        uint256 registration, 
+        uint256 depositorAward, 
+        uint256 receiverAward, 
+        string calldata details
+    ) external payable nonReentrant {
         Locker storage locker = lockers[registration]; 
         
-        uint256 remainder = locker.sum - locker.paid;
+        uint256 remainder;
+        unchecked {
+            remainder = locker.sum - locker.paid;
+        }
         
         require(msg.sender == locker.resolver, "NOT_RESOLVER");
         require(locker.locked, "NOT_LOCKED");
         require(depositorAward + receiverAward == remainder, "NOT_REMAINDER");
 
         // Calculate resolution fee from remainder and apply to awards.
-        uint256 resolverFee = remainder / resolvers[locker.resolver].fee;
-        depositorAward -= resolverFee / 2;
-        receiverAward -= resolverFee / 2;
-        
+        uint256 resolverFee = resolvers[locker.resolver].fee;
+        assembly { resolverFee := div(remainder, resolverFee) }
+        uint256 feeSplit;
+        assembly { feeSplit := div(resolverFee, 2) }
+        depositorAward -= feeSplit;
+        receiverAward -= feeSplit;
+
         // Handle asset transfers.
         if (locker.token == address(0)) { // Split ETH.
             safeTransferETH(locker.depositor, depositorAward);
@@ -472,7 +491,7 @@ contract LexLocker {
     /// @notice Registers an account to serve as a potential `resolver`.
     /// @param active Tracks willingness to serve - if 'true', can be joined to a locker.
     /// @param fee The divisor to determine resolution fee - e.g., if '20', fee is 5% of locker.
-    function registerResolver(bool active, uint8 fee) external cooldown nonReentrant {
+    function registerResolver(bool active, uint8 fee) external payable cooldown {
         require(fee != 0, "FEE_MUST_BE_GREATER_THAN_ZERO");
         resolvers[msg.sender] = Resolver(active, fee);
         lastActionTimestamp[msg.sender] = block.timestamp;
@@ -482,19 +501,17 @@ contract LexLocker {
     // **** LEXDAO PROTOCOL **** //
     // ------------------------ //
     
-    /// @notice Protocol for LexDAO to maintain agreements that can be stamped into lockers.
+    /// @notice Registration for LexDAO to maintain agreements that can be stamped into lockers.
     /// @param index # to register agreement under.
     /// @param agreement Text or link to agreement, etc. - this allows for amendments.
-    function registerAgreement(uint256 index, string calldata agreement) external {
-        require(msg.sender == lexDAO, "NOT_LEXDAO");
+    function registerAgreement(uint256 index, string calldata agreement) external payable onlyLexDAO {
         agreements[index] = agreement;
         emit RegisterAgreement(index, agreement);
     }
 
-    /// @notice Protocol for LexDAO to update role.
+    /// @notice Action for LexDAO to update role.
     /// @param lexDAO_ Account to assign role to.
-    function updateLexDAO(address lexDAO_) external {
-        require(msg.sender == lexDAO, "NOT_LEXDAO");
+    function updateLexDAO(address lexDAO_) external payable onlyLexDAO {
         lexDAO = lexDAO_;
         emit UpdateLexDAO(lexDAO_);
     }
@@ -537,7 +554,7 @@ contract LexLocker {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external {
+    ) external payable {
         // permit(address,address,uint256,uint256,uint8,bytes32,bytes32).
         (bool success, ) = token.call(abi.encodeWithSelector(0xd505accf, msg.sender, address(this), amount, deadline, v, r, s));
         require(success, "PERMIT_FAILED");
@@ -546,20 +563,20 @@ contract LexLocker {
     /// @notice Provides DAI-derived signed approval for this contract to spend user tokens.
     /// @param token Address of ERC-20 token.
     /// @param nonce Token owner's nonce - increases at each call to {permit}.
-    /// @param expiry Termination for signed approval in Unix time.
+    /// @param deadline Termination for signed approval in Unix time.
     /// @param v The recovery byte of the signature.
     /// @param r Half of the ECDSA signature pair.
     /// @param s Half of the ECDSA signature pair.
     function permitThisAllowed(
         address token,
         uint256 nonce,
-        uint256 expiry,
+        uint256 deadline,
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external {
+    ) external payable {
         // permit(address,address,uint256,uint256,bool,uint8,bytes32,bytes32).
-        (bool success, ) = token.call(abi.encodeWithSelector(0x8fcbaf0c, msg.sender, address(this), nonce, expiry, true, v, r, s));
+        (bool success, ) = token.call(abi.encodeWithSelector(0x8fcbaf0c, msg.sender, address(this), nonce, deadline, true, v, r, s));
         require(success, "PERMIT_FAILED");
     }
 
@@ -567,7 +584,7 @@ contract LexLocker {
     /// @param v The recovery byte of the signature.
     /// @param r Half of the ECDSA signature pair.
     /// @param s Half of the ECDSA signature pair.
-    function setBentoApproval(uint8 v, bytes32 r, bytes32 s) external {
+    function setBentoApproval(uint8 v, bytes32 r, bytes32 s) external payable {
         bento.setMasterContractApproval(msg.sender, address(this), true, v, r, s);
     }
     
@@ -582,7 +599,7 @@ contract LexLocker {
         address token,
         address to,
         uint256 amount
-    ) internal {
+    ) private {
         assembly {
             // We'll write our calldata to this slot below, but restore it later.
             let memPointer := mload(0x40)
@@ -624,7 +641,7 @@ contract LexLocker {
         address from,
         address to,
         uint256 amount
-    ) internal {
+    ) private {
         assembly {
             // We'll write our calldata to this slot below, but restore it later.
             let memPointer := mload(0x40)
