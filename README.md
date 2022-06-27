@@ -40,6 +40,10 @@ Using [foundry.toml](./foundry.toml), Foundry is easily configurable.
 
 For a full list of configuration options, see the Foundry [configuration documentation](https://github.com/gakonst/foundry/blob/master/config/README.md#all-options).
 
+## Deployments
+
+[`0x565b45f7A2EE3077B0BB4fC336dA73Ba3cfAb4a8`](https://rinkeby.etherscan.io/address/0x565b45f7a2ee3077b0bb4fc336da73ba3cfab4a8#code)
+
 ## License
 
 [AGPL-3.0-only](https://github.com/abigger87/femplate/blob/master/LICENSE)
