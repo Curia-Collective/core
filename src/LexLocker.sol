@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.15;
 
+import "@solmate/v7/src/tokens/ERC1155B.sol";
+
 /// @notice Minimal BentoBox vault interface.
 /// @dev `token` is aliased as `address` from `IERC20` for simplicity.
 interface IBentoBoxMinimal {
@@ -49,7 +51,7 @@ interface IBentoBoxMinimal {
 /// @title LexLocker
 /// @author LexDAO LLC
 /// @notice Resolveable, yield-bearing deal escrow for ETH and ERC-20/721 tokens.
-contract LexLocker {
+contract LexLocker is ERC1155B {
     /// @dev BentoBox vault contract.
     IBentoBoxMinimal private immutable bento;
     /// @dev Legal engineering guild.
@@ -72,6 +74,9 @@ contract LexLocker {
     mapping(uint256 => Locker) public lockers;
     mapping(address => Resolver) public resolvers;
     mapping(address => uint256) public lastActionTimestamp;
+
+    /// @notice ID metadata tracking.
+    mapping(uint256 => string) internal _uris;
     
     /// @notice Initialize contract.
     /// @param bento_ BentoBox vault contract.
@@ -96,13 +101,10 @@ contract LexLocker {
         bool bento,
         bool nft,
         address indexed depositor, 
-        address indexed receiver, 
         address indexed resolver,
         address token, 
         uint256 sum,
-        uint256 termination,
-        uint256 registration,
-        string details);
+        uint256 termination);
     event Release(uint256 registration);
     event Withdraw(uint256 registration);
     event Lock(uint256 registration, string details);
@@ -117,7 +119,6 @@ contract LexLocker {
         bool nft; 
         bool locked;
         address depositor;
-        address receiver;
         address resolver;
         address token;
         uint32 currentMilestone;
@@ -176,6 +177,19 @@ contract LexLocker {
     
     // **** ESCROW PROTOCOL **** //
     // ------------------------ //
+
+    /// @notice ID metadata fetcher
+    /// @param id ID to fetch from
+    /// @return URI ID metadata reference
+    function uri(uint256 id)
+        public
+        view
+        virtual
+        override
+        returns (string memory)
+    {
+        return _uris[id];
+    }
     
     /// @notice Returns escrow milestone deposits per `value` array.
     /// @param registration The index of escrow deposit.
@@ -230,10 +244,14 @@ contract LexLocker {
 
         lockers[registration] = 
             Locker(
-                false, nft, false, msg.sender, receiver, resolver, token, 0, uint32(termination), 0, uint96(sum), value
+                false, nft, false, msg.sender, resolver, token, 0, uint32(termination), 0, uint96(sum), value
             );
         
-        emit Deposit(false, nft, msg.sender, receiver, resolver, token, sum, termination, registration, details);
+        _mint(receiver, registration, '');
+        
+        emit Deposit(false, nft, msg.sender, resolver, token, sum, termination);
+
+        emit URI(details, registration);
     }
     
     /// @notice Deposits ETH or tokens (ERC-20) into BentoBox vault 
@@ -286,10 +304,12 @@ contract LexLocker {
 
         lockers[registration] = 
             Locker(
-                true, false, false, msg.sender, receiver, resolver, token, 0, uint32(termination), 0, uint96(sum), value
+                true, false, false, msg.sender, resolver, token, 0, uint32(termination), 0, uint96(sum), value
             );
   
-        emit Deposit(true, false, msg.sender, receiver, resolver, token, sum, termination, registration, details);
+        emit Deposit(true, false, msg.sender, resolver, token, sum, termination);
+
+        emit URI(details, registration);
     }
     
     /// @notice Validates deposit request 'invoice' for locker escrow.
@@ -365,19 +385,19 @@ contract LexLocker {
         unchecked {
             // Handle asset transfer.
             if (locker.token == address(0)) { // Release ETH.
-                safeTransferETH(locker.receiver, milestone);
+                safeTransferETH(ownerOf[registration], milestone);
                 locker.paid += uint96(milestone);
                 ++locker.currentMilestone;
             } else if (locker.bento) { // Release BentoBox shares.
-                bento.transfer(locker.token, address(this), locker.receiver, milestone);
+                bento.transfer(locker.token, address(this), ownerOf[registration], milestone);
                 locker.paid += uint96(milestone);
                 ++locker.currentMilestone;
             } else if (!locker.nft) { // ERC-20.
-                safeTransfer(locker.token, locker.receiver, milestone);
+                safeTransfer(locker.token, ownerOf[registration], milestone);
                 locker.paid += uint96(milestone);
                 ++locker.currentMilestone;
             } else { // Release NFT (note: set to single milestone).
-                safeTransferFrom(locker.token, address(this), locker.receiver, milestone);
+                safeTransferFrom(locker.token, address(this), ownerOf[registration], milestone);
                 locker.paid += uint96(milestone);
             }
         }
@@ -426,7 +446,7 @@ contract LexLocker {
     /// @param details Description of lock action (note: can link to secure dispute details, etc.).
     function lock(uint256 registration, string calldata details) external payable {
         Locker storage locker = lockers[registration];
-        require(msg.sender == locker.depositor || msg.sender == locker.receiver, "NOT_PARTY");
+        require(msg.sender == locker.depositor || msg.sender == ownerOf[registration], "NOT_PARTY");
         locker.locked = true;
         emit Lock(registration, details);
     }
@@ -465,21 +485,21 @@ contract LexLocker {
         // Handle asset transfers.
         if (locker.token == address(0)) { // Split ETH.
             safeTransferETH(locker.depositor, depositorAward);
-            safeTransferETH(locker.receiver, receiverAward);
+            safeTransferETH(ownerOf[registration], receiverAward);
             safeTransferETH(locker.resolver, resolverFee);
         } else if (locker.bento) { // ...BentoBox shares.
             bento.transfer(locker.token, address(this), locker.depositor, depositorAward);
-            bento.transfer(locker.token, address(this), locker.receiver, receiverAward);
+            bento.transfer(locker.token, address(this), ownerOf[registration], receiverAward);
             bento.transfer(locker.token, address(this), locker.resolver, resolverFee);
         } else if (!locker.nft) { // ...ERC20.
             safeTransfer(locker.token, locker.depositor, depositorAward);
-            safeTransfer(locker.token, locker.receiver, receiverAward);
+            safeTransfer(locker.token, ownerOf[registration], receiverAward);
             safeTransfer(locker.token, locker.resolver, resolverFee);
         } else { // Award NFT.
             if (depositorAward != 0) {
                 safeTransferFrom(locker.token, address(this), locker.depositor, locker.value[0]);
             } else {
-                safeTransferFrom(locker.token, address(this), locker.receiver, locker.value[0]);
+                safeTransferFrom(locker.token, address(this), ownerOf[registration], locker.value[0]);
             }
         }
         
