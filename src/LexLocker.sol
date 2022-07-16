@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.15;
 
-import "@solmate/v7/tokens/ERC1155B.sol";
+import "./ERC1155B.sol";
 
 /// @notice Minimal BentoBox vault interface.
 /// @dev `token` is aliased as `address` from `IERC20` for simplicity.
